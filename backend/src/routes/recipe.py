@@ -5,11 +5,19 @@ from src.middlewares.auth import get_current_user
 import logging
 from src.utils.ai.tools_model.schemas import RecieveResult
 from typing import List
+import json
 
 router = APIRouter(prefix="/recipes", tags=["Recipes"])
 
 
-@router.post("/", response_model=List[RecieveResult])
+@router.post("/new", response_model=List[RecieveResult])
 async def generate_recipe(file: UploadFile = File(...)):
     # async def generate_recipe(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
     return await get_recipe(file)
+
+@router.get("/all", response_model=List[RecieveResult])
+async def get_recipes():
+    with open("./history.json") as f:
+        history = json.load(f)
+    
+    return [RecieveResult(**h) for h in history]

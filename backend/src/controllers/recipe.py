@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 
 from src.utils.ai.tools_model.model import ToolsModel
 from src.utils.ai.clarifai import get_ingredients_from_image
+import json
 
 tools_model = ToolsModel(model_name="gemini-2.0-flash", model_type="gemini")
 
@@ -31,7 +32,15 @@ async def get_recipe(file: UploadFile):
             os.remove(image_path)
 
     try:
-        return tools_model.find_recieves(ingredients)
+        new_recipes = tools_model.find_recieves(ingredients)
+        
+        with open("./history.json") as f:
+            history = json.load(f)
+            history.extend([r.model_dump() for r in new_recipes])
+        with open("./history.json", "w") as f:
+            json.dump(history, f)
+        
+        return new_recipes
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar receitas: {str(e)}")
