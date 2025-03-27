@@ -7,6 +7,7 @@ from langgraph.graph import START, END, StateGraph
 from langgraph.types import Send
 from tavily import TavilyClient
 from pytube import Search
+from typing import List
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -18,7 +19,7 @@ models_dict = {
 }
 
 def search_videos(recipe):
-    search = Search(recipe)
+    search = Search(f"Receita de {recipe}")
     return [result.watch_url for result in search.results[:4]]
 
 class ToolsModel:
@@ -48,8 +49,9 @@ class ToolsModel:
         
         self.graph = builder.compile()
         
-    def find_recieves(self, ingredients : list[str]):
-        return self.graph.invoke({"ingredients": ingredients})
+    def find_recieves(self, ingredients : list[str])->List[RecieveResult]:
+        results =  self.graph.invoke({"ingredients": ingredients})
+        return [RecieveResult(**recipe) for recipe in results["recieves_results"]]
     
     def build_recieve(self, state : ReportState):
         

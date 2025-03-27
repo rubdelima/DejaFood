@@ -31,7 +31,7 @@ async def get_recipe(file: UploadFile):
             os.remove(image_path)
 
     try:
-        result = tools_model.find_recieves(ingredients)
-        return JSONResponse(content=result)
+        return tools_model.find_recieves(ingredients)
+    
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar receitas: {str(e)}")
