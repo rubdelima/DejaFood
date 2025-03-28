@@ -2,6 +2,7 @@ from fastapi import APIRouter, UploadFile, File
 from src.controllers.recipe import get_recipe, get_recipe_from_ingredients
 from src.utils.ai.tools_model.schemas import RecieveResult
 from typing import List
+from src.models.recipe_controller import IngredientsRequest
 import json
 
 router = APIRouter(prefix="/recipes", tags=["Recipes"])
@@ -40,8 +41,9 @@ async def get_recipes():
         return []
 
 @router.post("/generate-from-ingredients", response_model=List[RecieveResult])
-async def generate_from_ingredients(ingredients: List[str]):
+async def generate_from_ingredients(request:IngredientsRequest):
     """
     Generate recipes directly from a list of ingredients.
     """
+    ingredients = request.ingredients
     return await get_recipe_from_ingredients(ingredients)
