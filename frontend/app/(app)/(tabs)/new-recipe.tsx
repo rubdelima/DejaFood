@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Camera } from 'lucide-react-native';
+import { Camera, ArrowLeft } from 'lucide-react-native';  // Importando o ícone de voltar
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';  // Importando o hook de navegação
 
@@ -91,7 +91,12 @@ export default function NewRecipeScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Nova Receita</Text>
+      <View style={styles.headerRow}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <ArrowLeft size={28} color="#FF6B6B" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Nova Receita</Text>
+      </View>
       <Text style={styles.subtitle}>Tira uma foto dos ingredientes para começar</Text>
 
       {image ? (
@@ -138,11 +143,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 20,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 40,
+  },
   title: {
     fontSize: 32,
     fontFamily: 'Inter_700Bold',
     color: '#333',
-    marginTop: 60,
+    marginLeft: 16,
   },
   subtitle: {
     fontSize: 16,

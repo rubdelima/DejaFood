@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, Modal, TouchableOpacity } from 'react-native';
-import { router, useRouter } from 'expo-router';  // Hook de navegação do Expo Router
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';  // Hook de navegação do Expo Router
 import { PlusCircle } from 'lucide-react-native';
 
 // Definindo a interface para a Receita
@@ -25,18 +24,17 @@ export default function HomeScreen() {
       const response = await fetch('http://localhost:8000/recipes/all');
       const data = await response.json();
       console.log('Receitas recebidas:', data);  // Verifique se os dados estão corretos
-      setRecipes(data.slice(-3));  // Pegando as últimas 3 receitas
+      setRecipes(data);  // Exibe todas as receitas
     } catch (error) {
       console.error('Erro ao buscar receitas:', error);
     }
   };
 
-  // useFocusEffect ensures the fetch happens when the screen is focused
-  useFocusEffect(
-    React.useCallback(() => {
-      fetchRecipes();  // Chama o fetch quando a tela for focada
-    }, [])
-  );
+  // UseEffect para buscar receitas quando a tela for carregada
+  useEffect(() => {
+    fetchRecipes();
+  }, []);
+
   // Função que abre o modal e define a receita selecionada
   const handleRecipePress = (recipe: Recipe) => {
     setSelectedRecipe(recipe);  // Define a receita clicada
@@ -51,19 +49,20 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.container}>
-    <View style={styles.headerRow}>
-      <Text style={styles.title}>Bem-vindo de volta!</Text>
-      <TouchableOpacity onPress={() => router.push('/new-recipe')}>
-        <PlusCircle size={28} color="#FF6B6B" />
-      </TouchableOpacity>
-    </View>
-    <Text style={styles.subtitle}>O que você gostaria de cozinhar hoje?</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.title}>Bem-vindo de volta!</Text>
+        <TouchableOpacity onPress={() => router.push('/new-recipe')}>
+          <PlusCircle size={28} color="#FF6B6B" />
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.subtitle}>O que você gostaria de cozinhar hoje?</Text>
 
+      {/* Seção de Receitas Recentes */}
       <View style={styles.featuredContainer}>
         <Text style={styles.sectionTitle}>Receitas recentes</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.featuredScroll}>
           {recipes.length > 0 ? (
-            recipes.map((recipe, index) => (
+            recipes.slice(0, 3).map((recipe, index) => (  // Exibe as 3 primeiras receitas
               <TouchableOpacity key={index} onPress={() => handleRecipePress(recipe)}>
                 <View style={styles.featuredCard}>
                   <Image
@@ -83,6 +82,28 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
+      {/* Seção de Receitas Populares da Semana */}
+      <View style={styles.popularContainer}>
+        <Text style={styles.sectionTitle}>Todas as Receitas</Text>
+        {recipes.length > 0 ? (
+          recipes.slice(3).map((recipe, index) => (  // Exibe as receitas restantes
+            <View key={index} style={styles.popularCard}>
+              <Image
+                source={{ uri: recipe.images[0] }}
+                style={styles.popularImage}
+              />
+              <View style={styles.popularContent}>
+                <Text style={styles.popularTitle}>{recipe.title}</Text>
+                <Text style={styles.popularDescription}>{recipe.ingredients.join(', ').slice(0, 100)}...</Text>
+              </View>
+            </View>
+          ))
+        ) : (
+          <Text>Carregando...</Text>  // Exibe mensagem enquanto não há receitas
+        )}
+      </View>
+
+      {/* Modal para exibir a receita completa */}
       <Modal
         visible={modalVisible}
         animationType="slide"
@@ -180,6 +201,41 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 16,
   },
+  popularContainer: {
+    marginTop: 32,
+  },
+  popularCard: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  popularImage: {
+    width: 100,
+    height: 100,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
+  popularContent: {
+    flex: 1,
+    padding: 16,
+  },
+  popularTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#333',
+  },
+  popularDescription: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    color: '#666',
+    marginTop: 4,
+  },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -240,5 +296,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 120,
   },
-  
 });
+
