@@ -197,5 +197,15 @@ class ToolsModel:
         
         return {"recieves_results" : [recieve_result.model_dump()]}
     
+
+    def generate_recipes_from_ingredients(self, ingredients: list[str]) -> List[RecieveResult]:
+        """
+        Generate recipes directly from a list of ingredients.
+        """
+        try:
+            return self.get_recipes(ingredients)
+        except Exception as e:
+            raise ValueError(f"Error generating recipes: {str(e)}")
+
     def return_recieve(self, state : ReportState):
         return {"recieves" : state.recieves_results}
