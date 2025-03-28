@@ -57,7 +57,7 @@ export default function HomeScreen() {
       </View>
       <Text style={styles.subtitle}>O que você gostaria de cozinhar hoje?</Text>
 
-      {/* Seção de Receitas Recentes */}
+      {/* Seção de Receitas Recentes (Carrossel) */}
       <View style={styles.featuredContainer}>
         <Text style={styles.sectionTitle}>Receitas recentes</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.featuredScroll}>
@@ -82,21 +82,23 @@ export default function HomeScreen() {
         </ScrollView>
       </View>
 
-      {/* Seção de Receitas Populares da Semana */}
+      {/* Seção de Receitas Populares da Semana (Todas as Receitas) */}
       <View style={styles.popularContainer}>
         <Text style={styles.sectionTitle}>Todas as Receitas</Text>
         {recipes.length > 0 ? (
           recipes.slice(3).map((recipe, index) => (  // Exibe as receitas restantes
-            <View key={index} style={styles.popularCard}>
-              <Image
-                source={{ uri: recipe.images[0] }}
-                style={styles.popularImage}
-              />
-              <View style={styles.popularContent}>
-                <Text style={styles.popularTitle}>{recipe.title}</Text>
-                <Text style={styles.popularDescription}>{recipe.ingredients.join(', ').slice(0, 100)}...</Text>
+            <TouchableOpacity key={index} onPress={() => handleRecipePress(recipe)}>
+              <View style={styles.popularCard}>
+                <Image
+                  source={{ uri: recipe.images[0] }}
+                  style={styles.popularImage}
+                />
+                <View style={styles.popularContent}>
+                  <Text style={styles.popularTitle}>{recipe.title}</Text>
+                  <Text style={styles.popularDescription}>{recipe.ingredients.join(', ').slice(0, 100)}...</Text>
+                </View>
               </View>
-            </View>
+            </TouchableOpacity>
           ))
         ) : (
           <Text>Carregando...</Text>  // Exibe mensagem enquanto não há receitas
@@ -297,4 +299,3 @@ const styles = StyleSheet.create({
     marginTop: 120,
   },
 });
-
