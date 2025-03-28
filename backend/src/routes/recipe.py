@@ -13,6 +13,7 @@ router = APIRouter(prefix="/recipes", tags=["Recipes"])
 
 @router.post("/generate", response_model=List[RecieveResult])
 async def generate_recipe(file: UploadFile = File(...)):
+    print(f"Arquivo recebido: {file.filename}")
     # async def generate_recipe(file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
     return await get_recipe(file)
 
