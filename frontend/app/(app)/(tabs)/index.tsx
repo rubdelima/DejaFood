@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, Modal, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';  // Hook de navegação do Expo Router
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 // Definindo a interface para a Receita
 interface Recipe {
@@ -16,21 +17,23 @@ export default function HomeScreen() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);  // Estado para armazenar a receita selecionada
   const [modalVisible, setModalVisible] = useState(false);  // Estado para controlar a visibilidade do modal
 
-  useEffect(() => {
-    const fetchRecipes = async () => {
-      try {
-        const response = await fetch('http://127.0.0.1:8000/recipes/all');
-        const data: Recipe[] = await response.json();
-        console.log('Receitas recebidas:', data);  // Verifique se os dados estão corretos
-        setRecipes(data.slice(-3));  // Pegando as últimas 3 receitas
-      } catch (error) {
-        console.error('Erro ao buscar receitas:', error);
-      }
-    };
+  const fetchRecipes = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/recipes/all');
+      const data = await response.json();
+      console.log('Receitas recebidas:', data);  // Verifique se os dados estão corretos
+      setRecipes(data.slice(-3));  // Pegando as últimas 3 receitas
+    } catch (error) {
+      console.error('Erro ao buscar receitas:', error);
+    }
+  };
 
-    fetchRecipes();  // Chama o fetch assim que a tela é carregada
-  }, []);  // O fetch será chamado apenas quando o componente for montado
-
+  // useFocusEffect ensures the fetch happens when the screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchRecipes();  // Chama o fetch quando a tela for focada
+    }, [])
+  );
   // Função que abre o modal e define a receita selecionada
   const handleRecipePress = (recipe: Recipe) => {
     setSelectedRecipe(recipe);  // Define a receita clicada
