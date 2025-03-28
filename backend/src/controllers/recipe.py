@@ -1,14 +1,14 @@
 import os
 from fastapi import HTTPException, UploadFile
-from fastapi.responses import JSONResponse
-
 from src.utils.ai.tools_model.model import ToolsModel
 from src.utils.ai.clarifai import get_ingredients_from_image
 import json
+from src.utils.ai.tools_model.schemas import RecieveResult
 
-tools_model = ToolsModel(model_name="gemini-2.0-flash", model_type="gemini")
+# tools_model = ToolsModel(model_name="gemini-2.0-flash", model_type="gemini")
+tools_model = ToolsModel("phi4-mini", "ollama")
 
-async def get_recipe(file: UploadFile):
+async def get_recipe(file: UploadFile, search:bool = False, return_ingredients:bool = False):
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="O arquivo enviado não é uma imagem.")
 
@@ -31,14 +31,21 @@ async def get_recipe(file: UploadFile):
         if os.path.exists(image_path):
             os.remove(image_path)
 
+    if return_ingredients:
+        return [RecieveResult(ingredients=ingredients)]
+    
     try:
-        new_recipes = tools_model.find_recieves(ingredients)
+        
+        if search:
+            new_recipes = tools_model.search_recipes(ingredients)
+        else:
+            new_recipes = tools_model.get_recipes(ingredients)
         
         with open("./history.json") as f:
             history = json.load(f)
             history.extend([r.model_dump() for r in new_recipes])
         with open("./history.json", "w") as f:
-            json.dump(history, f)
+            json.dump(history, f, indent=4)
         
         return new_recipes
     

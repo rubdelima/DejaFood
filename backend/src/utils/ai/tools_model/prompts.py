@@ -27,3 +27,13 @@ O conteúdo da página web é:
 <CONTENT>
 
 """
+
+get_recipe = """
+Você é um grande especialista em orientar como fazer a receita {recipe}, crie um passo a passo em português da receita no seguinte formato:
+
+class RecipeBase(BaseModel):
+    ingredients: List[str] = []
+    steps: List[str] = []
+
+Lembre-se seu retorno deve ser um List[RecipeBase], e sua resposta deve estar em português
+"""
