@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, Modal, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';  // Hook de navegação do Expo Router
+import { router, useRouter } from 'expo-router';  // Hook de navegação do Expo Router
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { PlusCircle } from 'lucide-react-native';
 
 // Definindo a interface para a Receita
 interface Recipe {
@@ -13,13 +14,15 @@ interface Recipe {
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
+
   const [recipes, setRecipes] = useState<Recipe[]>([]);  // Estado para armazenar as receitas
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);  // Estado para armazenar a receita selecionada
   const [modalVisible, setModalVisible] = useState(false);  // Estado para controlar a visibilidade do modal
 
   const fetchRecipes = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/recipes/all');
+      const response = await fetch('http://localhost:8000/recipes/all');
       const data = await response.json();
       console.log('Receitas recebidas:', data);  // Verifique se os dados estão corretos
       setRecipes(data.slice(-3));  // Pegando as últimas 3 receitas
@@ -48,8 +51,13 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.container}>
+    <View style={styles.headerRow}>
       <Text style={styles.title}>Bem-vindo de volta!</Text>
-      <Text style={styles.subtitle}>O que você gostaria de cozinhar hoje?</Text>
+      <TouchableOpacity onPress={() => router.push('/new-recipe')}>
+        <PlusCircle size={28} color="#FF6B6B" />
+      </TouchableOpacity>
+    </View>
+    <Text style={styles.subtitle}>O que você gostaria de cozinhar hoje?</Text>
 
       <View style={styles.featuredContainer}>
         <Text style={styles.sectionTitle}>Receitas recentes</Text>
@@ -121,7 +129,7 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontFamily: 'Inter_700Bold',
     color: '#333',
-    marginTop: 60,
+    marginTop: 0,
   },
   subtitle: {
     fontSize: 16,
@@ -226,4 +234,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 120,
+  },
+  
 });
