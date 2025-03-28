@@ -25,14 +25,14 @@ export default function TabLayout() {
       <Tabs.Screen
         name="new-recipe"
         options={{
-          title: 'New Recipe',
+          title: 'Nova Receita',
           tabBarIcon: ({ color, size }) => <PlusCircle size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="recipes"
         options={{
-          title: 'My Recipes',
+          title: 'Minhas Receitas',
           tabBarIcon: ({ color, size }) => <Book size={size} color={color} />,
         }}
       />
