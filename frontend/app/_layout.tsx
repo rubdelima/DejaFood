@@ -23,6 +23,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(app)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" options={{ title: 'Oops!' }} />
+        <Stack.Screen name="recipe-details" />
       </Stack>
       <StatusBar style="auto" />
     </>
