@@ -57,7 +57,6 @@ export default function NewRecipeScreen() {
   };
 
   // Função para enviar a imagem para EXTRAÇÃO de ingredientes e navegar
-  // Atualizado em 31 de Março de 2025 para chamar /simulate
   const analyzeRecipe = async () => {
     if (!image) {
         Alert.alert("Nenhuma Imagem", "Por favor, tire uma foto ou escolha uma imagem da galeria.");

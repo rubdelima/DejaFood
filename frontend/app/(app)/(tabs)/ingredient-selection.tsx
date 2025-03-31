@@ -1,5 +1,4 @@
 // Arquivo: app/ingredient-selection.tsx
-// Atualizado em 31 de Março de 2025, 17:54 Brasil
 
 import React, { useState, useEffect } from 'react';
 import {
