@@ -58,6 +58,6 @@ def get_ingredients_from_image(image_path: str) -> list[str]:
 
     # Extrai os conceitos (ingredientes) da resposta
     output = post_model_outputs_response.outputs[0]
-    ingredients = [concept.name for concept in output.data.concepts]
+    ingredients = [concept.name for concept in output.data.concepts if concept.value > 0.15]
 
     return ingredients

@@ -36,7 +36,8 @@ async def get_recipes():
     try:
         with open("./history.json") as f:
             history = json.load(f)
-        return [RecieveResult(**h) for h in history]
+        recipes =  [RecieveResult(**h) for h in history]
+        return recipes[::-1]
     except FileNotFoundError:
         return []
 

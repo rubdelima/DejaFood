@@ -5,7 +5,7 @@ from src.utils.ai.clarifai import get_ingredients_from_image
 from src.utils.file import save_temp_file, delete_temp_file
 from src.utils.ai.tools_model.schemas import RecieveResult
 
-tools_model = ToolsModel(model_name="gemini-2.0-flash", model_type="gemini")
+tools_model = ToolsModel(model_name="phi4-mini", model_type="ollama")
 
 async def process_image(file: UploadFile) -> list[str]:
     """
@@ -30,8 +30,12 @@ async def generate_or_search_recipes(ingredients: list[str], search: bool = Fals
     """
     try:
         if search:
-            return tools_model.search_recipes(ingredients)
-        return tools_model.get_recipes(ingredients)
+            recipes = tools_model.search_recipes(ingredients)
+        else:
+            recipes =  tools_model.get_recipes(ingredients)
+        
+        update_recipe_history(recipes)
+        return recipes
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating recipes: {str(e)}")
 
@@ -40,14 +44,17 @@ def update_recipe_history(new_recipes: list[RecieveResult]):
     Update the recipe history file with new recipes.
     """
     try:
+        print("Atualizando Banco de Dados")
         with open("./history.json", "r") as f:
             history = json.load(f)
+            print("Histórico Lido com Sucesso")
     except FileNotFoundError:
         history = []
 
     history.extend([r.model_dump() for r in new_recipes])
     with open("./history.json", "w") as f:
         json.dump(history, f, indent=4)
+        print("Histórico Atualizado com Sucesso")
 
 async def get_recipe(file: UploadFile, search: bool = False, return_ingredients: bool = False):
     """
@@ -68,6 +75,7 @@ async def get_recipe_from_ingredients(ingredients: list[str]):
     """
     try:
         recipes = tools_model.generate_recipes_from_ingredients(ingredients)
+        update_recipe_history(recipes)
         return recipes
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating recipes: {str(e)}")
