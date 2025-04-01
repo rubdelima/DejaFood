@@ -4,10 +4,11 @@ import { useRouter } from 'expo-router';  // Hook de navegação do Expo Router
 import { PlusCircle } from 'lucide-react-native';
 
 // Definindo a interface para a Receita
-interface Recipe {
+export interface Recipe {
   title: string;
   ingredients: string[];
   images: string[];
+  videos?: string[];
   steps: string[];
   url: string;
 }
@@ -36,9 +37,13 @@ export default function HomeScreen() {
   }, []);
 
   // Função que abre o modal e define a receita selecionada
-  const handleRecipePress = (recipe: Recipe) => {
-    setSelectedRecipe(recipe);  // Define a receita clicada
-    setModalVisible(true);  // Abre o modal
+  const handleRecipePress =  (recipe: Recipe) => {
+    setSelectedRecipe(recipe); // Define a receita clicada
+    // setModalVisible(true); // Abre o modal
+    router.push({
+      pathname: '/recipe-details',
+      params: { recipeStringfied: JSON.stringify(recipe) },
+    });
   };
 
   // Função para fechar o modal
