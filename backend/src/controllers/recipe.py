@@ -5,7 +5,7 @@ from src.utils.ai.clarifai import get_ingredients_from_image
 from src.utils.file import save_temp_file, delete_temp_file
 from src.utils.ai.tools_model.schemas import RecieveResult
 
-tools_model = ToolsModel(model_name="gemini-2.0-flash", model_type="gemini")
+tools_model = ToolsModel(model_name="phi4-mini", model_type="ollama")
 
 async def process_image(file: UploadFile) -> list[str]:
     """
