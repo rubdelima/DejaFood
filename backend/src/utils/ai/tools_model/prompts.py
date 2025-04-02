@@ -1,13 +1,6 @@
 search_recieves_prompt = """
-Você é um grande conzinheiro e conhece todas as reeceitas com qualquer tipo de alimento.
-
-Você deve receber uma lista de ingredientes e retornar uma lista de apenas 3 receitas com os ingredientes informados. Retorne apenas os nomes das Receitas.
-
-Essas são os ingredientes que você deve usar:
-
-<INGREDIENTS>
-{ingredients}
-<INGREDIENTS>
+Com base nos seguintes ingredientes: {ingredients}, gere uma lista de receitas que utilizem **somente** esses ingredientes. 
+Evite adicionar ingredientes que não estejam na lista fornecida. Certifique-se de que as receitas sejam criativas, relevantes e práticas.
 """
 
 extract_recieved_prompt = """

@@ -7,7 +7,7 @@ from src.utils.ai.tools_model.schemas import RecieveResult
 from googletrans import Translator
 import traceback
 
-tools_model = ToolsModel(model_name="phi4-mini", model_type="ollama")
+tools_model = ToolsModel(model_name="gemini-2.0-flash", model_type="gemini")
 translator = Translator()
 
 async def process_image(file: UploadFile) -> list[str]:

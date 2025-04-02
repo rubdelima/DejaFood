@@ -82,39 +82,45 @@ class ToolsModel:
         self.generate_graph = generate_builder.compile()
         
     
-    def get_recipes(self, ingredients:list[str], verbose=False)->List[RecieveResult]:
-        prompt = search_recieves_prompt.format(ingredients=",".join(ingredients))
+    def get_recipes(self, ingredients: list[str], verbose=False) -> List[RecieveResult]:
+        prompt = search_recieves_prompt.format(
+            ingredients=", ".join(ingredients)
+        )
         query_llm = self.llm.with_structured_output(RecieveList)
         result = query_llm.invoke(prompt)
-        
+
         recipes = []
-        
+
         for recipe_title in result.recieves:
             if verbose:
-                print(recipe_title)
-                
+                print(f"Gerando receita para: {recipe_title}")
+
             prompt = get_recipe.format(recipe=recipe_title)
             query_llm = self.llm.with_structured_output(RecipeBase)
             recipe = query_llm.invoke(prompt)
-            
+
             results = self.tavily.search(
-                f"Receita de {recipe_title[:10]}", 
-                max_results=10, include_raw_content=False, include_images=True
+                f"Receita de {recipe_title[:10]}",
+                max_results=10,
+                include_raw_content=False,
+                include_images=True,
             )
             url = None
-            
+
             for result in results["results"]:
                 url = result["url"]
                 break
-            
-            recipes.append(RecieveResult(
-                **recipe.model_dump(),
-                title=recipe_title,
-                images = results["images"],
-                videos = search_videos(recipe_title),
-                url = url,  
-            ))
-        
+
+            recipes.append(
+                RecieveResult(
+                    **recipe.model_dump(),
+                    title=recipe_title,
+                    images=results["images"],
+                    videos=search_videos(recipe_title),
+                    url=url,
+                )
+            )
+
         return recipes
     
     def build_recieve(self, state : ReportState):
