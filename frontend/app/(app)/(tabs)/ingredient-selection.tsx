@@ -10,6 +10,8 @@ import {
   Dimensions,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -32,9 +34,12 @@ export default function IngredientSelectionScreen() {
   const [allIngredients, setAllIngredients] = useState<string[]>([]);
   const [acceptedIngredients, setAcceptedIngredients] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAddIngredientModal, setShowAddIngredientModal] = useState(false);
+  const [customIngredientText, setCustomIngredientText] = useState('');
+  const [customIngredients, setCustomIngredients] = useState<string[]>([]);
   const swiperRef = useRef<Swiper<string>>(null);
 
-  // Carrega os ingredientes iniciais a partir dos parâmetros
+  // Load initial ingredients from params
   useEffect(() => {
     const initialIngredientsParam = params.initialIngredientsStringfied;
     let initialList: string[] = [];
@@ -51,17 +56,40 @@ export default function IngredientSelectionScreen() {
     setAllIngredients(initialList);
   }, [params.initialIngredientsStringfied]);
 
-  // Ao deslizar para a direita, o ingrediente é aceito
+  // When swiping right, accept the ingredient
   const onSwipedRight = (cardIndex: number) => {
     setAcceptedIngredients(prev => [...prev, allIngredients[cardIndex]]);
   };
 
-  // Quando todos os cards forem processados, chama a API para gerar as receitas
-  const onSwipedAll = async () => {
+  // When all cards are swiped, prompt the user to add custom ingredients
+  const onSwipedAll = () => {
     if (acceptedIngredients.length === 0) {
       Alert.alert("Nenhum Ingrediente", "Você não selecionou nenhum ingrediente.");
       return;
     }
+    setShowAddIngredientModal(true);
+  };
+
+  // Handle adding a custom ingredient into the list
+  const handleAddCustomIngredient = () => {
+    const trimmedText = customIngredientText.trim();
+    if (trimmedText === '') {
+      Alert.alert("Campo Vazio", "Digite um ingrediente para adicionar.");
+      return;
+    }
+    setCustomIngredients(prev => [...prev, trimmedText]);
+    setCustomIngredientText('');
+  };
+
+  // Remove an ingredient from the custom ingredients list
+  const handleRemoveCustomIngredient = (index: number) => {
+    setCustomIngredients(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Submit all ingredients to the API
+  const submitIngredients = async () => {
+    const finalIngredients = [...acceptedIngredients, ...customIngredients];
+    setShowAddIngredientModal(false);
     setIsSubmitting(true);
     try {
       const response = await fetch('http://localhost:8000/recipes/generate-from-ingredients', {
@@ -70,7 +98,7 @@ export default function IngredientSelectionScreen() {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: JSON.stringify({ ingredients: acceptedIngredients })
+        body: JSON.stringify({ ingredients: finalIngredients })
       });
       if (response.ok) {
         const recipesData: Recipe[] = await response.json();
@@ -102,11 +130,9 @@ export default function IngredientSelectionScreen() {
           </TouchableOpacity>
           <Text style={styles.title}>Escolha os Ingredientes</Text>
         </View>
-
         <Text style={styles.subtitle}>
           Deslize para a direita para confirmar, para a esquerda para descartar.
         </Text>
-
         <View style={styles.swiperContainer}>
           {allIngredients.length > 0 ? (
             <Swiper
@@ -169,14 +195,69 @@ export default function IngredientSelectionScreen() {
           ) : (
             <Text style={styles.emptyText}>Nenhum ingrediente disponível.</Text>
           )}
-
           {isSubmitting && (
             <View style={styles.loadingOverlay} pointerEvents="none">
-              {/* Minimalistic Spinner */}
               <ActivityIndicator size="large" color="#4CAF50" />
             </View>
           )}
         </View>
+
+        {/* Modal for adding custom ingredients */}
+        <Modal
+          visible={showAddIngredientModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowAddIngredientModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              <Text style={styles.modalTitle}>Adicionar Ingrediente(s) Extra</Text>
+              <Text style={styles.modalSubtitle}>
+                Se desejar, digite ingredientes para adicionar:
+              </Text>
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={styles.modalInput}
+                  value={customIngredientText}
+                  onChangeText={setCustomIngredientText}
+                  placeholder="Digite o ingrediente..."
+                  placeholderTextColor="#999"
+                />
+                <TouchableOpacity
+                  style={styles.addButton}
+                  onPress={handleAddCustomIngredient}
+                >
+                  <Text style={styles.addButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+              {customIngredients.length > 0 && (
+                <View style={styles.customList}>
+                  {customIngredients.map((item, index) => (
+                    <View key={index} style={styles.customItem}>
+                      <Text style={styles.customItemText}>{item}</Text>
+                      <TouchableOpacity onPress={() => handleRemoveCustomIngredient(index)}>
+                        <Text style={styles.removeText}>x</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+              <View style={styles.modalButtonRow}>
+                <TouchableOpacity
+                  style={styles.modalButtonSecondary}
+                  onPress={() => {
+                    // Clear custom ingredients and submit current list
+                    setCustomIngredientText('');
+                    setCustomIngredients([]);
+                    submitIngredients();
+                  }}
+                >
+                  <Text style={styles.modalButtonSecondaryText}>Continuar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </GestureHandlerRootView>
   );
@@ -251,11 +332,108 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   loadingOverlay: {
-    // Preenche a tela, mas sem cor de fundo
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent', // Remove o "cinza" ou "escuro" do overlay
+    backgroundColor: 'transparent',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  modalInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+    color: '#333',
+  },
+  addButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    marginLeft: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  customList: {
+    marginBottom: 15,
+  },
+  customItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: '#F7F7F7',
+    borderRadius: 8,
+    marginBottom: 5,
+  },
+  customItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  removeText: {
+    color: 'red',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  modalButtonSecondary: {
+    backgroundColor: '#FF6B6B',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    flex: 1,
+  },
+  modalButtonSecondaryText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
