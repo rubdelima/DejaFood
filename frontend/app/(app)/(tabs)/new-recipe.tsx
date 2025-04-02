@@ -1,4 +1,4 @@
-import React, { useState } from 'react'; // Removido useEffect e useMemo não utilizados aqui
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,16 +12,13 @@ import {
 import { Camera, ArrowLeft } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-
-// Interface Recipe (se definida em outro lugar, importe; senão, defina se necessário)
-// import { Recipe } from '../path/to/interfaces';
+import { apiUrl } from '@/app/utils/env';
 
 export default function NewRecipeScreen() {
   const [image, setImage] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const router = useRouter();
 
-  // Função para escolher imagem da galeria
   const pickImage = async () => {
     const permissionResult =
       await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -43,7 +40,6 @@ export default function NewRecipeScreen() {
     }
   };
 
-  // Função para tirar foto
   const takePhoto = async () => {
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
     if (permissionResult.granted === false) {
@@ -63,7 +59,6 @@ export default function NewRecipeScreen() {
     }
   };
 
-  // Função para enviar a imagem para EXTRAÇÃO de ingredientes e navegar
   const analyzeRecipe = async () => {
     if (!image) {
       Alert.alert(
@@ -73,7 +68,7 @@ export default function NewRecipeScreen() {
       return;
     }
     setLoading(true);
-    const formData = new FormData();
+
     const filename = image.split('/').pop() || 'photo.jpg';
     const extensionMatch = filename.match(/\.([^.]+)$/);
     const fileExtension = extensionMatch
@@ -84,35 +79,30 @@ export default function NewRecipeScreen() {
     else if (fileExtension === 'webp') mimeType = 'image/webp';
 
     try {
-      const response = await fetch(image);
-      const blob = await response.blob();
-      // @ts-ignore - FormData RN pode precisar de 'any' para blob ou objeto {uri...}
-      formData.append('file', blob, filename); // Enviando como blob
+      const formData = new FormData();
+      formData.append('file', {
+        uri: image,
+        name: filename,
+        type: mimeType,
+      } as any);
 
       console.log('Enviando imagem para API /recipes/simulate...');
 
-      // --- CHAMA O ENDPOINT /simulate ---
-      // !!! CONFIRA A URL BASE (localhost ou IP) !!!
-      const apiResponse = await fetch(
-        'http://localhost:8000/recipes/simulate',
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
+      const apiResponse = await fetch(`${apiUrl}/recipes/simulate`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
       if (apiResponse.ok) {
         const data = await apiResponse.json();
         console.log('Resposta da API (/simulate) recebida:', data);
 
-        // Espera prioritariamente: { ingredients: [...] }
-        // !!! CONFIRA A CHAVE EXATA ('ingredients'?) NA RESPOSTA REAL DE /simulate !!!
         let detectedIngredients = data?.ingredients;
         let validIngredientsFound = Array.isArray(detectedIngredients);
 
-        // Fallback: Se não encontrou 'ingredients', mas recebeu um array (como antes)
-        // tenta pegar 'ingredients' do primeiro item, baseado na docstring de /simulate
-        // sugerindo que pode retornar List[RecieveResult] mas com propósito diferente.
         if (
           !validIngredientsFound &&
           Array.isArray(data) &&
@@ -123,7 +113,7 @@ export default function NewRecipeScreen() {
             'Endpoint /simulate retornou um Array, usando ingredientes do primeiro item.'
           );
           detectedIngredients = data[0].ingredients;
-          validIngredientsFound = true; // Encontrou de forma alternativa
+          validIngredientsFound = true;
         }
 
         if (validIngredientsFound) {
@@ -133,15 +123,13 @@ export default function NewRecipeScreen() {
           );
           setLoading(false);
 
-          // Navega para a seleção passando a lista extraída
           router.push({
-            pathname: '/ingredient-selection', // Confirme a rota
+            pathname: '/ingredient-selection',
             params: {
               initialIngredientsStringfied: JSON.stringify(detectedIngredients),
             },
           });
         } else {
-          // Formato inesperado vindo de /simulate
           console.error(
             "Resposta da API /simulate OK, mas 'ingredients' não encontrado no formato esperado:",
             data
@@ -153,7 +141,6 @@ export default function NewRecipeScreen() {
           setLoading(false);
         }
       } else {
-        // Tratamento de erro da API (/simulate)
         const errorBody = await apiResponse.text();
         console.error('Falha na API /simulate:', apiResponse.status, errorBody);
         Alert.alert(
@@ -163,7 +150,6 @@ export default function NewRecipeScreen() {
         setLoading(false);
       }
     } catch (error) {
-      // Tratamento de erro de rede
       console.error('Erro ao chamar /simulate:', error);
       Alert.alert(
         'Erro de Rede',
@@ -173,7 +159,6 @@ export default function NewRecipeScreen() {
     }
   };
 
-  // --- JSX ---
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
@@ -198,25 +183,27 @@ export default function NewRecipeScreen() {
               resizeMode="contain"
             />
             {!loading && (
-              <TouchableOpacity
-                style={styles.analyzeButton}
-                onPress={analyzeRecipe}
-                disabled={loading}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.analyzeButtonText}>
-                  Analisar Ingredientes
-                </Text>
-              </TouchableOpacity>
-            )}
-            {!loading && (
-              <TouchableOpacity
-                style={styles.retakeButton}
-                onPress={() => setImage(null)}
-                disabled={loading}
-              >
-                <Text style={styles.retakeButtonText}>Escolher Outra Foto</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  style={styles.analyzeButton}
+                  onPress={analyzeRecipe}
+                  disabled={loading}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.analyzeButtonText}>
+                    Analisar Ingredientes
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.retakeButton}
+                  onPress={() => setImage(null)}
+                  disabled={loading}
+                >
+                  <Text style={styles.retakeButtonText}>
+                    Escolher Outra Foto
+                  </Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
         ) : (
@@ -248,23 +235,11 @@ export default function NewRecipeScreen() {
           <Text style={styles.loadingText}>Analisando imagem...</Text>
         </View>
       )}
-
-      {loading && (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Carregando a análise...</Text>
-          <View style={styles.loadingBarContainer}>
-            <View style={[styles.loadingBar, { width: `${progress}%` }]} />
-          </View>
-        </View>
-      )}
     </View>
   );
 }
 
-// --- Estilos --- (mantidos da versão anterior)
 const styles = StyleSheet.create({
-  // ... (Cole os estilos completos da resposta anterior aqui) ...
-  // Vou repetir os estilos relevantes para completude:
   container: {
     flex: 1,
     backgroundColor: '#fff',
@@ -283,12 +258,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 26,
-    fontFamily: 'Inter_700Bold', // Garanta fonte carregada
+    fontFamily: 'Inter_700Bold',
     color: '#333',
   },
   subtitle: {
     fontSize: 16,
-    fontFamily: 'Inter_400Regular', // Garanta fonte carregada
+    fontFamily: 'Inter_400Regular',
     color: '#666',
     marginBottom: 40,
     textAlign: 'center',
@@ -320,7 +295,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold', // Garanta fonte carregada
+    fontFamily: 'Inter_600SemiBold',
   },
   secondaryButton: {
     backgroundColor: '#fff',
@@ -363,7 +338,7 @@ const styles = StyleSheet.create({
   analyzeButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold', // Garanta fonte carregada
+    fontFamily: 'Inter_600SemiBold',
     fontWeight: 'bold',
   },
   retakeButton: {
@@ -373,7 +348,7 @@ const styles = StyleSheet.create({
   retakeButtonText: {
     color: '#555',
     fontSize: 15,
-    fontFamily: 'Inter_500Medium', // Garanta fonte carregada
+    fontFamily: 'Inter_500Medium',
     textAlign: 'center',
     textDecorationLine: 'underline',
   },
@@ -392,6 +367,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontSize: 16,
     color: '#FF6B6B',
-    fontFamily: 'Inter_600SemiBold', // Garanta fonte carregada
+    fontFamily: 'Inter_600SemiBold',
   },
 });

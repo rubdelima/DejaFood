@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
+  TouchableOpacity,
+} from 'react-native';
 import { Clock, Users } from 'lucide-react-native';
+import { apiUrl } from '@/app/utils/env';
 
 // Definindo a interface para a Receita
 interface Recipe {
@@ -12,22 +20,22 @@ interface Recipe {
 }
 
 export default function RecipesScreen() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);  // Estado para armazenar as receitas
+  const [recipes, setRecipes] = useState<Recipe[]>([]); // Estado para armazenar as receitas
 
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        const response = await fetch('http://localhost:8000/recipes/all');  // Substitua pela URL correta
+        const response = await fetch(`${apiUrl}/recipes/all`); // Substitua pela URL correta
         const data: Recipe[] = await response.json();
-        console.log('Receitas recebidas:', data);  // Verifique se os dados estão corretos
-        setRecipes(data.slice(-3));  // Pegando as últimas 3 receitas
+        console.log('Receitas recebidas:', data); // Verifique se os dados estão corretos
+        setRecipes(data.slice(-3)); // Pegando as últimas 3 receitas
       } catch (error) {
         console.error('Erro ao buscar receitas:', error);
       }
     };
 
     fetchRecipes();
-  }, []);  // A requisição é feita apenas uma vez quando o componente é montado
+  }, []); // A requisição é feita apenas uma vez quando o componente é montado
 
   return (
     <ScrollView style={styles.container}>
@@ -37,7 +45,7 @@ export default function RecipesScreen() {
         recipes.map((recipe, index) => (
           <TouchableOpacity key={index} style={styles.recipeCard}>
             <Image
-              source={{ uri: recipe.images[0] }}  // Usando a primeira imagem da receita
+              source={{ uri: recipe.images[0] }} // Usando a primeira imagem da receita
               style={styles.recipeImage}
             />
             <View style={styles.recipeContent}>
@@ -45,22 +53,27 @@ export default function RecipesScreen() {
               <Text style={styles.recipeDescription}>
                 {recipe.ingredients.join(', ').slice(0, 100)}...
               </Text>
-              <View style={styles.recipeMetadata}>
-              </View>
+              <View style={styles.recipeMetadata}></View>
             </View>
           </TouchableOpacity>
         ))
       ) : (
-        <Text>Carregando receitas...</Text>  // Exibe enquanto as receitas estão sendo carregadas
+        <Text>Carregando receitas...</Text> // Exibe enquanto as receitas estão sendo carregadas
       )}
 
       <View style={styles.videoSection}>
         <Text style={styles.sectionTitle}>Vídeos Relacionados</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.videoScroll}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.videoScroll}
+        >
           {[1, 2, 3].map((item) => (
             <View key={item} style={styles.videoCard}>
               <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1482049016688-2d3e1b311543' }}
+                source={{
+                  uri: 'https://images.unsplash.com/photo-1482049016688-2d3e1b311543',
+                }}
                 style={styles.videoThumbnail}
               />
               <Text style={styles.videoTitle}>Exemplo</Text>

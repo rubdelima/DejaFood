@@ -17,6 +17,7 @@ import Swiper from 'react-native-deck-swiper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { apiUrl } from '@/app/utils/env';
 
 interface Recipe {
   title: string;
@@ -39,84 +40,93 @@ export default function IngredientSelectionScreen() {
   const [customIngredients, setCustomIngredients] = useState<string[]>([]);
   const swiperRef = useRef<Swiper<string>>(null);
 
-  // Load initial ingredients from params
   useEffect(() => {
     const initialIngredientsParam = params.initialIngredientsStringfied;
     let initialList: string[] = [];
-    if (initialIngredientsParam && typeof initialIngredientsParam === 'string') {
+    if (
+      initialIngredientsParam &&
+      typeof initialIngredientsParam === 'string'
+    ) {
       try {
         initialList = JSON.parse(initialIngredientsParam);
-        if (!Array.isArray(initialList)) { initialList = []; }
-        initialList = initialList.filter(item => typeof item === 'string');
+        if (!Array.isArray(initialList)) initialList = [];
+        initialList = initialList.filter((item) => typeof item === 'string');
       } catch (e) {
-        console.error("Erro no parse:", e);
-        initialList = [];
+        console.error('Erro no parse:', e);
       }
     }
     setAllIngredients(initialList);
   }, [params.initialIngredientsStringfied]);
 
-  // When swiping right, accept the ingredient
   const onSwipedRight = (cardIndex: number) => {
-    setAcceptedIngredients(prev => [...prev, allIngredients[cardIndex]]);
+    setAcceptedIngredients((prev) => [...prev, allIngredients[cardIndex]]);
   };
 
-  // When all cards are swiped, prompt the user to add custom ingredients
   const onSwipedAll = () => {
-    if (acceptedIngredients.length === 0) {
-      Alert.alert("Nenhum Ingrediente", "Você não selecionou nenhum ingrediente.");
-      return;
-    }
     setShowAddIngredientModal(true);
   };
 
-  // Handle adding a custom ingredient into the list
   const handleAddCustomIngredient = () => {
     const trimmedText = customIngredientText.trim();
-    if (trimmedText === '') {
-      Alert.alert("Campo Vazio", "Digite um ingrediente para adicionar.");
+    if (!trimmedText) {
+      Alert.alert('Campo Vazio', 'Digite um ingrediente para adicionar.');
       return;
     }
-    setCustomIngredients(prev => [...prev, trimmedText]);
+    setCustomIngredients((prev) => [...prev, trimmedText]);
     setCustomIngredientText('');
   };
 
-  // Remove an ingredient from the custom ingredients list
   const handleRemoveCustomIngredient = (index: number) => {
-    setCustomIngredients(prev => prev.filter((_, i) => i !== index));
+    setCustomIngredients((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Submit all ingredients to the API
   const submitIngredients = async () => {
     const finalIngredients = [...acceptedIngredients, ...customIngredients];
+    console.log(finalIngredients);
+    if (finalIngredients.length === 0) {
+      Alert.alert(
+        'Atenção',
+        'Adicione pelo menos um ingrediente antes de continuar.'
+      );
+      return;
+    }
+
     setShowAddIngredientModal(false);
     setIsSubmitting(true);
+
     try {
-      const response = await fetch('http://localhost:8000/recipes/generate-from-ingredients', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({ ingredients: finalIngredients })
-      });
+      console.log('opa');
+      const response = await fetch(
+        `${apiUrl}/recipes/generate-from-ingredients`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+          body: JSON.stringify({ ingredients: finalIngredients }),
+        }
+      );
+
       if (response.ok) {
         const recipesData: Recipe[] = await response.json();
-        if (recipesData && recipesData.length > 0) {
+        if (recipesData?.length > 0) {
           router.push({
             pathname: '/recipe-list',
-            params: { recipesListStringfied: JSON.stringify(recipesData) }
+            params: { recipesListStringfied: JSON.stringify(recipesData) },
           });
         } else {
-          Alert.alert("Nenhuma Receita", "Não encontramos receitas com os ingredientes selecionados.");
-          setIsSubmitting(false);
+          Alert.alert(
+            'Nenhuma Receita',
+            'Não encontramos receitas com os ingredientes selecionados.'
+          );
         }
       } else {
-        Alert.alert('Erro ao Buscar Receitas', `O servidor retornou um erro: ${response.status}.`);
-        setIsSubmitting(false);
+        Alert.alert('Erro', `O servidor retornou um erro: ${response.status}`);
       }
     } catch (error) {
       Alert.alert('Erro de Rede', 'Não foi possível conectar ao servidor.');
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -125,14 +135,16 @@ export default function IngredientSelectionScreen() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
         <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={router.back} style={styles.backButton}>
             <ArrowLeft size={28} color="#FF6B6B" />
           </TouchableOpacity>
           <Text style={styles.title}>Escolha os Ingredientes</Text>
         </View>
+
         <Text style={styles.subtitle}>
-          Deslize para a direita para confirmar, para a esquerda para descartar.
+          Deslize para a direita para confirmar, para a esquerda para descartar
         </Text>
+
         <View style={styles.swiperContainer}>
           {allIngredients.length > 0 ? (
             <Swiper
@@ -148,41 +160,42 @@ export default function IngredientSelectionScreen() {
               cardIndex={0}
               backgroundColor="transparent"
               stackSize={3}
-              cardVerticalMargin={50}
+              infinite={false}
+              cardVerticalMargin={20}
               overlayLabels={{
                 left: {
-                  title: 'Não',
+                  title: 'DESCARTAR',
                   style: {
                     label: {
                       backgroundColor: 'red',
+                      borderColor: 'red',
                       color: 'white',
-                      fontSize: 24,
-                      padding: 10,
+                      fontSize: 20,
                     },
                     wrapper: {
                       flexDirection: 'column',
                       alignItems: 'flex-end',
                       justifyContent: 'flex-start',
-                      marginTop: 20,
-                      marginLeft: -20,
+                      marginTop: 30,
+                      marginLeft: -30,
                     },
                   },
                 },
                 right: {
-                  title: 'Sim',
+                  title: 'ACEITAR',
                   style: {
                     label: {
                       backgroundColor: '#4CAF50',
+                      borderColor: '#4CAF50',
                       color: 'white',
-                      fontSize: 24,
-                      padding: 10,
+                      fontSize: 20,
                     },
                     wrapper: {
                       flexDirection: 'column',
                       alignItems: 'flex-start',
                       justifyContent: 'flex-start',
-                      marginTop: 20,
-                      marginLeft: 20,
+                      marginTop: 30,
+                      marginLeft: 30,
                     },
                   },
                 },
@@ -193,71 +206,89 @@ export default function IngredientSelectionScreen() {
               disableBottomSwipe
             />
           ) : (
-            <Text style={styles.emptyText}>Nenhum ingrediente disponível.</Text>
-          )}
-          {isSubmitting && (
-            <View style={styles.loadingOverlay} pointerEvents="none">
-              <ActivityIndicator size="large" color="#4CAF50" />
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Nenhum ingrediente detectado</Text>
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => setShowAddIngredientModal(true)}
+              >
+                <Text style={styles.addButtonText}>Adicionar Manualmente</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
 
-        {/* Modal for adding custom ingredients */}
         <Modal
           visible={showAddIngredientModal}
           transparent
-          animationType="fade"
+          animationType="slide"
           onRequestClose={() => setShowAddIngredientModal(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={styles.modalContainer}>
-              <Text style={styles.modalTitle}>Adicionar Ingrediente(s) Extra</Text>
-              <Text style={styles.modalSubtitle}>
-                Se desejar, digite ingredientes para adicionar:
-              </Text>
-              <View style={styles.inputRow}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Adicionar Ingredientes</Text>
+
+              <View style={styles.inputContainer}>
                 <TextInput
-                  style={styles.modalInput}
+                  style={styles.input}
+                  placeholder="Digite um ingrediente..."
                   value={customIngredientText}
                   onChangeText={setCustomIngredientText}
-                  placeholder="Digite o ingrediente..."
-                  placeholderTextColor="#999"
+                  onSubmitEditing={handleAddCustomIngredient}
                 />
                 <TouchableOpacity
-                  style={styles.addButton}
+                  style={styles.addIcon}
                   onPress={handleAddCustomIngredient}
                 >
-                  <Text style={styles.addButtonText}>+</Text>
+                  <Text style={styles.addIconText}>+</Text>
                 </TouchableOpacity>
               </View>
+
               {customIngredients.length > 0 && (
-                <View style={styles.customList}>
+                <View style={styles.ingredientsList}>
                   {customIngredients.map((item, index) => (
-                    <View key={index} style={styles.customItem}>
-                      <Text style={styles.customItemText}>{item}</Text>
-                      <TouchableOpacity onPress={() => handleRemoveCustomIngredient(index)}>
-                        <Text style={styles.removeText}>x</Text>
+                    <View key={index} style={styles.ingredientItem}>
+                      <Text style={styles.ingredientText}>{item}</Text>
+                      <TouchableOpacity
+                        onPress={() => handleRemoveCustomIngredient(index)}
+                      >
+                        <Text style={styles.removeText}>✕</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
                 </View>
               )}
-              <View style={styles.modalButtonRow}>
+
+              <View style={styles.modalButtons}>
                 <TouchableOpacity
-                  style={styles.modalButtonSecondary}
-                  onPress={() => {
-                    // Clear custom ingredients and submit current list
-                    setCustomIngredientText('');
-                    setCustomIngredients([]);
-                    submitIngredients();
-                  }}
+                  style={[styles.modalButton, styles.cancelButton]}
+                  onPress={() => setShowAddIngredientModal(false)}
                 >
-                  <Text style={styles.modalButtonSecondaryText}>Continuar</Text>
+                  <Text style={styles.buttonText}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalButton, styles.submitButton]}
+                  onPress={submitIngredients}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.buttonText}>Buscar Receitas</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
           </View>
         </Modal>
+
+        {isSubmitting && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#4CAF50" />
+            <Text style={styles.loadingText}>Processando...</Text>
+          </View>
+        )}
       </View>
     </GestureHandlerRootView>
   );
@@ -268,172 +299,180 @@ const { width, height } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F4F8',
-    paddingTop: Platform.OS === 'ios' ? 20 : 10,
+    backgroundColor: '#F8FAFC',
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
     paddingHorizontal: 16,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 16,
   },
   backButton: {
     padding: 8,
+    marginRight: 12,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#333',
-    marginLeft: 10,
-    flexShrink: 1,
+    color: '#2D3748',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 16,
+    color: '#718096',
     textAlign: 'center',
-    marginBottom: 14,
-    marginTop: 4,
-    paddingHorizontal: 10,
+    marginBottom: 24,
   },
   swiperContainer: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 30,
-    overflow: 'hidden',
-    width: '100%',
+    alignItems: 'center',
   },
   card: {
-    width: width * 0.85,
-    maxWidth: 350,
-    height: height * 0.45,
-    maxHeight: 400,
-    borderRadius: 18,
-    backgroundColor: '#fff',
+    width: width * 0.8,
+    height: height * 0.4,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  cardText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#999',
-    textAlign: 'center',
-    marginTop: 40,
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    width: '80%',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    padding: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 10,
+  cardText: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#2D3748',
     textAlign: 'center',
+    lineHeight: 28,
   },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  modalInput: {
+  emptyContainer: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 16,
-    color: '#333',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#718096',
+    marginBottom: 20,
+    textAlign: 'center',
   },
   addButton: {
     backgroundColor: '#4CAF50',
-    borderRadius: 8,
-    marginLeft: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
   },
   addButtonText: {
-    color: '#fff',
-    fontSize: 20,
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
   },
-  customList: {
-    marginBottom: 15,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  customItem: {
+  modalContent: {
+    width: '90%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#2D3748',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#CBD5E0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    marginRight: 8,
+  },
+  addIcon: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addIconText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '600',
+  },
+  ingredientsList: {
+    maxHeight: height * 0.3,
+    marginBottom: 16,
+  },
+  ingredientItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    backgroundColor: '#F7F7F7',
+    backgroundColor: '#EDF2F7',
     borderRadius: 8,
-    marginBottom: 5,
+    padding: 12,
+    marginBottom: 8,
   },
-  customItemText: {
+  ingredientText: {
     fontSize: 16,
-    color: '#333',
-  },
-  removeText: {
-    color: 'red',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  modalButtonSecondary: {
-    backgroundColor: '#FF6B6B',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
+    color: '#2D3748',
     flex: 1,
   },
-  modalButtonSecondaryText: {
-    color: '#fff',
+  removeText: {
+    color: '#E53E3E',
+    fontSize: 18,
+    marginLeft: 12,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  cancelButton: {
+    backgroundColor: '#CBD5E0',
+  },
+  submitButton: {
+    backgroundColor: '#4CAF50',
+  },
+  buttonText: {
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#4CAF50',
   },
 });

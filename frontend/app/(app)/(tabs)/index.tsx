@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router'; // Hook de navegação do Expo Router
 import { PlusCircle } from 'lucide-react-native';
+import { apiUrl } from '@/app/utils/env';
 
 // Definindo a interface para a Receita
 export interface Recipe {
@@ -22,6 +23,7 @@ export interface Recipe {
 }
 
 export default function HomeScreen() {
+  console.log(apiUrl);
   const router = useRouter();
 
   const [recipes, setRecipes] = useState<Recipe[]>([]); // Estado para armazenar as receitas
@@ -30,9 +32,8 @@ export default function HomeScreen() {
 
   const fetchRecipes = async () => {
     try {
-      const response = await fetch('http://localhost:8000/recipes/all');
+      const response = await fetch(`${apiUrl}/recipes/all`);
       const data = await response.json();
-      console.log('Receitas recebidas:', data); // Verifique se os dados estão corretos
       setRecipes(data); // Exibe todas as receitas
     } catch (error) {
       console.error('Erro ao buscar receitas:', error);
