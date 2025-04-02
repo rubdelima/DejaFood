@@ -1,13 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, Modal, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';  // Hook de navegação do Expo Router
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
+  Modal,
+  TouchableOpacity,
+} from 'react-native';
+import { useRouter } from 'expo-router'; // Hook de navegação do Expo Router
 import { PlusCircle } from 'lucide-react-native';
 
 // Definindo a interface para a Receita
-interface Recipe {
+export interface Recipe {
   title: string;
   ingredients: string[];
   images: string[];
+  videos?: string[];
   steps: string[];
   url: string;
 }
@@ -15,16 +24,16 @@ interface Recipe {
 export default function HomeScreen() {
   const router = useRouter();
 
-  const [recipes, setRecipes] = useState<Recipe[]>([]);  // Estado para armazenar as receitas
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);  // Estado para armazenar a receita selecionada
-  const [modalVisible, setModalVisible] = useState(false);  // Estado para controlar a visibilidade do modal
+  const [recipes, setRecipes] = useState<Recipe[]>([]); // Estado para armazenar as receitas
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null); // Estado para armazenar a receita selecionada
+  const [modalVisible, setModalVisible] = useState(false); // Estado para controlar a visibilidade do modal
 
   const fetchRecipes = async () => {
     try {
       const response = await fetch('http://localhost:8000/recipes/all');
       const data = await response.json();
-      console.log('Receitas recebidas:', data);  // Verifique se os dados estão corretos
-      setRecipes(data);  // Exibe todas as receitas
+      console.log('Receitas recebidas:', data); // Verifique se os dados estão corretos
+      setRecipes(data); // Exibe todas as receitas
     } catch (error) {
       console.error('Erro ao buscar receitas:', error);
     }
@@ -37,14 +46,18 @@ export default function HomeScreen() {
 
   // Função que abre o modal e define a receita selecionada
   const handleRecipePress = (recipe: Recipe) => {
-    setSelectedRecipe(recipe);  // Define a receita clicada
-    setModalVisible(true);  // Abre o modal
+    setSelectedRecipe(recipe); // Define a receita clicada
+    // setModalVisible(true); // Abre o modal
+    router.push({
+      pathname: '/recipe-details',
+      params: { recipeStringfied: JSON.stringify(recipe) },
+    });
   };
 
   // Função para fechar o modal
   const closeModal = () => {
     setModalVisible(false);
-    setSelectedRecipe(null);  // Limpa a receita selecionada
+    setSelectedRecipe(null); // Limpa a receita selecionada
   };
 
   return (
@@ -60,24 +73,36 @@ export default function HomeScreen() {
       {/* Seção de Receitas Recentes (Carrossel) */}
       <View style={styles.featuredContainer}>
         <Text style={styles.sectionTitle}>Receitas recentes</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.featuredScroll}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.featuredScroll}
+        >
           {recipes.length > 0 ? (
-            recipes.slice(0, 3).map((recipe, index) => (  // Exibe as 3 primeiras receitas
-              <TouchableOpacity key={index} onPress={() => handleRecipePress(recipe)}>
-                <View style={styles.featuredCard}>
-                  <Image
-                    source={{ uri: recipe.images[0] }}  // Usando a primeira imagem da receita
-                    style={styles.featuredImage}
-                  />
-                  <Text style={styles.featuredTitle}>{recipe.title}</Text>
-                  <Text style={styles.featuredDescription}>
-                    {recipe.ingredients.join(', ').slice(0, 100)}...
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))
+            recipes.slice(0, 3).map(
+              (
+                recipe,
+                index // Exibe as 3 primeiras receitas
+              ) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => handleRecipePress(recipe)}
+                >
+                  <View style={styles.featuredCard}>
+                    <Image
+                      source={{ uri: recipe.images[0] }} // Usando a primeira imagem da receita
+                      style={styles.featuredImage}
+                    />
+                    <Text style={styles.featuredTitle}>{recipe.title}</Text>
+                    <Text style={styles.featuredDescription}>
+                      {recipe.ingredients.join(', ').slice(0, 100)}...
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )
+            )
           ) : (
-            <Text>Carregando receitas...</Text>  // Exibe mensagem enquanto não há receitas
+            <Text>Carregando receitas...</Text> // Exibe mensagem enquanto não há receitas
           )}
         </ScrollView>
       </View>
@@ -86,22 +111,32 @@ export default function HomeScreen() {
       <View style={styles.popularContainer}>
         <Text style={styles.sectionTitle}>Todas as Receitas</Text>
         {recipes.length > 0 ? (
-          recipes.slice(3).map((recipe, index) => (  // Exibe as receitas restantes
-            <TouchableOpacity key={index} onPress={() => handleRecipePress(recipe)}>
-              <View style={styles.popularCard}>
-                <Image
-                  source={{ uri: recipe.images[0] }}
-                  style={styles.popularImage}
-                />
-                <View style={styles.popularContent}>
-                  <Text style={styles.popularTitle}>{recipe.title}</Text>
-                  <Text style={styles.popularDescription}>{recipe.ingredients.join(', ').slice(0, 100)}...</Text>
+          recipes.slice(3).map(
+            (
+              recipe,
+              index // Exibe as receitas restantes
+            ) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => handleRecipePress(recipe)}
+              >
+                <View style={styles.popularCard}>
+                  <Image
+                    source={{ uri: recipe.images[0] }}
+                    style={styles.popularImage}
+                  />
+                  <View style={styles.popularContent}>
+                    <Text style={styles.popularTitle}>{recipe.title}</Text>
+                    <Text style={styles.popularDescription}>
+                      {recipe.ingredients.join(', ').slice(0, 100)}...
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </TouchableOpacity>
-          ))
+              </TouchableOpacity>
+            )
+          )
         ) : (
-          <Text>Carregando...</Text>  // Exibe mensagem enquanto não há receitas
+          <Text>Carregando...</Text> // Exibe mensagem enquanto não há receitas
         )}
       </View>
 
@@ -110,7 +145,7 @@ export default function HomeScreen() {
         visible={modalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={closeModal}  // Fecha o modal ao pressionar o botão de voltar
+        onRequestClose={closeModal} // Fecha o modal ao pressionar o botão de voltar
       >
         <View style={styles.modalContainer}>
           {selectedRecipe && (
@@ -121,10 +156,14 @@ export default function HomeScreen() {
                 style={styles.modalImage}
               />
               <Text style={styles.modalSubtitle}>Ingredientes:</Text>
-              <Text style={styles.modalText}>{selectedRecipe.ingredients.join(', ')}</Text>
+              <Text style={styles.modalText}>
+                {selectedRecipe.ingredients.join(', ')}
+              </Text>
 
               <Text style={styles.modalSubtitle}>Passos:</Text>
-              <Text style={styles.modalText}>{selectedRecipe.steps.join('\n')}</Text>
+              <Text style={styles.modalText}>
+                {selectedRecipe.steps.join('\n')}
+              </Text>
 
               <Text style={styles.modalSubtitle}>Receita Completa:</Text>
               <Text style={styles.modalLink} onPress={() => {}}>
@@ -242,7 +281,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',  // Fundo semitransparente
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Fundo semitransparente
   },
   modalContent: {
     backgroundColor: '#fff',

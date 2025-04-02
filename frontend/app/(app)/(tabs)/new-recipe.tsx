@@ -1,128 +1,252 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Camera, ArrowLeft } from 'lucide-react-native';  // Importando o ícone de voltar
+import React, { useState } from 'react'; // Removido useEffect e useMemo não utilizados aqui
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Platform,
+  Alert,
+} from 'react-native';
+import { Camera, ArrowLeft } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';  // Importando o hook de navegação
+import { useRouter } from 'expo-router';
+
+// Interface Recipe (se definida em outro lugar, importe; senão, defina se necessário)
+// import { Recipe } from '../path/to/interfaces';
 
 export default function NewRecipeScreen() {
   const [image, setImage] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);  // Estado para o carregamento
-  const [progress, setProgress] = useState(0);  // Progresso da barra de carregamento
-  const router = useRouter();  // Hook de navegação
+  const [loading, setLoading] = useState<boolean>(false);
+  const router = useRouter();
 
+  // Função para escolher imagem da galeria
   const pickImage = async () => {
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert(
+        'Permissão Necessária',
+        'É preciso permitir acesso à galeria para escolher uma imagem.'
+      );
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [4, 3],
-      quality: 1,
+      quality: 0.8,
     });
-
-    if (!result.canceled) {
+    if (!result.canceled && result.assets && result.assets.length > 0) {
       setImage(result.assets[0].uri);
     }
   };
 
+  // Função para tirar foto
   const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    
-    if (status === 'granted') {
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 1,
-      });
-
-      if (!result.canceled) {
-        setImage(result.assets[0].uri);
-      }
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (permissionResult.granted === false) {
+      Alert.alert(
+        'Permissão Necessária',
+        'É preciso permitir acesso à câmera para tirar uma foto.'
+      );
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setImage(result.assets[0].uri);
     }
   };
 
+  // Função para enviar a imagem para EXTRAÇÃO de ingredientes e navegar
   const analyzeRecipe = async () => {
-    if (!image) return;
-
-    setLoading(true);  // Ativa o estado de carregamento
-
+    if (!image) {
+      Alert.alert(
+        'Nenhuma Imagem',
+        'Por favor, tire uma foto ou escolha uma imagem da galeria.'
+      );
+      return;
+    }
+    setLoading(true);
     const formData = new FormData();
     const filename = image.split('/').pop() || 'photo.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image';
+    const extensionMatch = filename.match(/\.([^.]+)$/);
+    const fileExtension = extensionMatch
+      ? extensionMatch[1].toLowerCase()
+      : 'jpg';
+    let mimeType = 'image/jpeg';
+    if (fileExtension === 'png') mimeType = 'image/png';
+    else if (fileExtension === 'webp') mimeType = 'image/webp';
 
     try {
       const response = await fetch(image);
       const blob = await response.blob();
+      // @ts-ignore - FormData RN pode precisar de 'any' para blob ou objeto {uri...}
+      formData.append('file', blob, filename); // Enviando como blob
 
-      formData.append('file', blob, filename);
+      console.log('Enviando imagem para API /recipes/simulate...');
 
-      const apiResponse = await fetch('http://localhost:8000/recipes/generate', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          // Não é necessário setar 'Content-Type' quando usa FormData
-        },
-      });
+      // --- CHAMA O ENDPOINT /simulate ---
+      // !!! CONFIRA A URL BASE (localhost ou IP) !!!
+      const apiResponse = await fetch(
+        'http://localhost:8000/recipes/simulate',
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
 
       if (apiResponse.ok) {
         const data = await apiResponse.json();
-        console.log('Recipe Analysis:', data);
-      } else {
-        console.log('Falha ao analisar a receita:', apiResponse.status);
-      }
+        console.log('Resposta da API (/simulate) recebida:', data);
 
-      // Simulando a animação de carregamento (bar progress)
-      let progressInterval = setInterval(() => {
-        setProgress((prevProgress) => {
-          if (prevProgress >= 100) {
-            clearInterval(progressInterval);
-            setLoading(false);  // Desativa o estado de carregamento
-            setTimeout(() => {
-              router.push('/');  // Redireciona para a Home após a análise
-            }, 500);  // Espera um pouco antes de redirecionar
-            return 100;
-          }
-          return prevProgress + 5;  // Aumenta a barra de carregamento em 5% a cada intervalo
-        });
-      }, 300);  // A cada 300ms aumenta o progresso em 5%
+        // Espera prioritariamente: { ingredients: [...] }
+        // !!! CONFIRA A CHAVE EXATA ('ingredients'?) NA RESPOSTA REAL DE /simulate !!!
+        let detectedIngredients = data?.ingredients;
+        let validIngredientsFound = Array.isArray(detectedIngredients);
+
+        // Fallback: Se não encontrou 'ingredients', mas recebeu um array (como antes)
+        // tenta pegar 'ingredients' do primeiro item, baseado na docstring de /simulate
+        // sugerindo que pode retornar List[RecieveResult] mas com propósito diferente.
+        if (
+          !validIngredientsFound &&
+          Array.isArray(data) &&
+          data.length > 0 &&
+          Array.isArray(data[0]?.ingredients)
+        ) {
+          console.warn(
+            'Endpoint /simulate retornou um Array, usando ingredientes do primeiro item.'
+          );
+          detectedIngredients = data[0].ingredients;
+          validIngredientsFound = true; // Encontrou de forma alternativa
+        }
+
+        if (validIngredientsFound) {
+          console.log(
+            'Ingredientes extraídos para seleção:',
+            detectedIngredients
+          );
+          setLoading(false);
+
+          // Navega para a seleção passando a lista extraída
+          router.push({
+            pathname: '/ingredient-selection', // Confirme a rota
+            params: {
+              initialIngredientsStringfied: JSON.stringify(detectedIngredients),
+            },
+          });
+        } else {
+          // Formato inesperado vindo de /simulate
+          console.error(
+            "Resposta da API /simulate OK, mas 'ingredients' não encontrado no formato esperado:",
+            data
+          );
+          Alert.alert(
+            'Erro de Resposta',
+            'Formato de ingredientes inválido vindo do servidor (/simulate).'
+          );
+          setLoading(false);
+        }
+      } else {
+        // Tratamento de erro da API (/simulate)
+        const errorBody = await apiResponse.text();
+        console.error('Falha na API /simulate:', apiResponse.status, errorBody);
+        Alert.alert(
+          'Erro na Extração',
+          `O servidor retornou um erro ao extrair ingredientes (/simulate): ${apiResponse.status}.`
+        );
+        setLoading(false);
+      }
     } catch (error) {
-      console.log('Erro ao enviar a imagem:', error);
+      // Tratamento de erro de rede
+      console.error('Erro ao chamar /simulate:', error);
+      Alert.alert(
+        'Erro de Rede',
+        'Não foi possível conectar ao servidor para extrair ingredientes.'
+      );
+      setLoading(false);
     }
   };
 
+  // --- JSX ---
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
           <ArrowLeft size={28} color="#FF6B6B" />
         </TouchableOpacity>
         <Text style={styles.title}>Nova Receita</Text>
       </View>
-      <Text style={styles.subtitle}>Tira uma foto dos ingredientes para começar</Text>
+      <Text style={styles.subtitle}>
+        Tire ou escolha uma foto dos ingredientes
+      </Text>
 
-      {image ? (
-        <View style={styles.imageContainer}>
-          <Image source={{ uri: image }} style={styles.image} />
-          <TouchableOpacity style={styles.retakeButton} onPress={() => setImage(null)}>
-            <Text style={styles.retakeButtonText}>Nova Foto</Text>
-          </TouchableOpacity>
+      <View style={styles.mainContent}>
+        {image ? (
+          <View style={styles.imagePreviewContainer}>
+            <Image
+              source={{ uri: image }}
+              style={styles.image}
+              resizeMode="contain"
+            />
+            {!loading && (
+              <TouchableOpacity
+                style={styles.analyzeButton}
+                onPress={analyzeRecipe}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.analyzeButtonText}>
+                  Analisar Ingredientes
+                </Text>
+              </TouchableOpacity>
+            )}
+            {!loading && (
+              <TouchableOpacity
+                style={styles.retakeButton}
+                onPress={() => setImage(null)}
+                disabled={loading}
+              >
+                <Text style={styles.retakeButtonText}>Escolher Outra Foto</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ) : (
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={takePhoto}
+              activeOpacity={0.8}
+            >
+              <Camera size={28} color="#fff" />
+              <Text style={styles.buttonText}>Tirar Foto</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.secondaryButton]}
+              onPress={pickImage}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.buttonText, styles.secondaryButtonText]}>
+                Escolher da Galeria
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#FF6B6B" />
+          <Text style={styles.loadingText}>Analisando imagem...</Text>
         </View>
-      ) : (
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button} onPress={takePhoto}>
-            <Camera size={32} color="#fff" />
-            <Text style={styles.buttonText}>Tirar Foto</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={pickImage}>
-            <Text style={[styles.buttonText, styles.secondaryButtonText]}>Escolher da Galeria</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {image && !loading && (
-        <TouchableOpacity style={styles.analyzeButton} onPress={analyzeRecipe}>
-          <Text style={styles.analyzeButtonText}>Analisar Receita</Text>
-        </TouchableOpacity>
       )}
 
       {loading && (
@@ -137,104 +261,137 @@ export default function NewRecipeScreen() {
   );
 }
 
+// --- Estilos --- (mantidos da versão anterior)
 const styles = StyleSheet.create({
+  // ... (Cole os estilos completos da resposta anterior aqui) ...
+  // Vou repetir os estilos relevantes para completude:
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 30,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 40,
+    marginBottom: 15,
+  },
+  backButton: {
+    padding: 5,
+    marginRight: 10,
   },
   title: {
-    fontSize: 32,
-    fontFamily: 'Inter_700Bold',
+    fontSize: 26,
+    fontFamily: 'Inter_700Bold', // Garanta fonte carregada
     color: '#333',
-    marginLeft: 16,
   },
   subtitle: {
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Inter_400Regular', // Garanta fonte carregada
     color: '#666',
-    marginTop: 8,
+    marginBottom: 40,
+    textAlign: 'center',
   },
-  buttonContainer: {
+  mainContent: {
     flex: 1,
     justifyContent: 'center',
-    gap: 16,
+  },
+  buttonContainer: {
+    justifyContent: 'center',
+    gap: 20,
+    marginHorizontal: 20,
   },
   button: {
     backgroundColor: '#FF6B6B',
     borderRadius: 12,
-    padding: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    gap: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
-    marginTop: 8,
+    fontFamily: 'Inter_600SemiBold', // Garanta fonte carregada
   },
   secondaryButton: {
     backgroundColor: '#fff',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#FF6B6B',
+    shadowColor: '#ccc',
+    elevation: 4,
   },
   secondaryButtonText: {
     color: '#FF6B6B',
   },
-  imageContainer: {
+  imagePreviewContainer: {
     flex: 1,
-    marginTop: 32,
     alignItems: 'center',
+    paddingBottom: 10,
   },
   image: {
     width: '100%',
-    height: 300,
+    aspectRatio: 4 / 3,
     borderRadius: 16,
-  },
-  retakeButton: {
-    marginTop: 16,
-  },
-  retakeButtonText: {
-    color: '#FF6B6B',
-    fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
+    marginBottom: 25,
+    backgroundColor: '#e0e0e0',
   },
   analyzeButton: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#4CAF50',
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 30,
     alignItems: 'center',
-    marginTop: 16,
+    width: '90%',
+    alignSelf: 'center',
+    marginTop: 'auto',
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   analyzeButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Inter_600SemiBold', // Garanta fonte carregada
+    fontWeight: 'bold',
+  },
+  retakeButton: {
+    padding: 10,
+    marginBottom: 10,
+  },
+  retakeButtonText: {
+    color: '#555',
+    fontSize: 15,
+    fontFamily: 'Inter_500Medium', // Garanta fonte carregada
+    textAlign: 'center',
+    textDecorationLine: 'underline',
   },
   loadingContainer: {
-    marginTop: 20,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
   loadingText: {
-    fontSize: 18,
-    color: '#FF6B6B',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  loadingBarContainer: {
-    width: '80%',
-    height: 10,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 5,
     marginTop: 20,
-  },
-  loadingBar: {
-    height: '100%',
-    backgroundColor: '#FF6B6B',
-    borderRadius: 5,
+    fontSize: 16,
+    color: '#FF6B6B',
+    fontFamily: 'Inter_600SemiBold', // Garanta fonte carregada
   },
 });

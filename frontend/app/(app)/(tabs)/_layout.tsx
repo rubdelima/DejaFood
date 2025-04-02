@@ -6,6 +6,7 @@ export default function AppLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="new-recipe" />
+      <Stack.Screen name="recipe-details" />
     </Stack>
   );
 }
