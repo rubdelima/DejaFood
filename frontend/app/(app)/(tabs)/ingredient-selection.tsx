@@ -82,7 +82,6 @@ export default function IngredientSelectionScreen() {
 
   const submitIngredients = async () => {
     const finalIngredients = [...acceptedIngredients, ...customIngredients];
-    console.log(finalIngredients);
     if (finalIngredients.length === 0) {
       Alert.alert(
         'Atenção',
@@ -95,7 +94,6 @@ export default function IngredientSelectionScreen() {
     setIsSubmitting(true);
 
     try {
-      console.log('opa');
       const response = await fetch(
         `${apiUrl}/recipes/generate-from-ingredients`,
         {

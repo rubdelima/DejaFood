@@ -23,55 +23,49 @@ export interface Recipe {
 }
 
 export default function HomeScreen() {
-  console.log(apiUrl);
   const router = useRouter();
 
-  const [recipes, setRecipes] = useState<Recipe[]>([]); // Estado para armazenar as receitas
-  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null); // Estado para armazenar a receita selecionada
-  const [modalVisible, setModalVisible] = useState(false); // Estado para controlar a visibilidade do modal
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const fetchRecipes = async () => {
     try {
       const response = await fetch(`${apiUrl}/recipes/all`);
       const data = await response.json();
-      setRecipes(data); // Exibe todas as receitas
+      setRecipes(data);
     } catch (error) {
       console.error('Erro ao buscar receitas:', error);
     }
   };
 
-  // UseEffect para buscar receitas quando a tela for carregada
   useEffect(() => {
     fetchRecipes();
   }, []);
 
-  // Função que abre o modal e define a receita selecionada
   const handleRecipePress = (recipe: Recipe) => {
-    setSelectedRecipe(recipe); // Define a receita clicada
-    // setModalVisible(true); // Abre o modal
+    setSelectedRecipe(recipe);
     router.push({
       pathname: '/recipe-details',
       params: { recipeStringfied: JSON.stringify(recipe) },
     });
   };
 
-  // Função para fechar o modal
   const closeModal = () => {
     setModalVisible(false);
-    setSelectedRecipe(null); // Limpa a receita selecionada
+    setSelectedRecipe(null);
   };
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>Bem-vindo de volta!</Text>
-        <TouchableOpacity onPress={() => router.push('/new-recipe')}>
+        <TouchableOpacity onPress={() => router.push('/recipe-list')}>
           <PlusCircle size={28} color="#FF6B6B" />
         </TouchableOpacity>
       </View>
       <Text style={styles.subtitle}>O que você gostaria de cozinhar hoje?</Text>
 
-      {/* Seção de Receitas Recentes (Carrossel) */}
       <View style={styles.featuredContainer}>
         <Text style={styles.sectionTitle}>Receitas recentes</Text>
         <ScrollView
@@ -80,73 +74,61 @@ export default function HomeScreen() {
           style={styles.featuredScroll}
         >
           {recipes.length > 0 ? (
-            recipes.slice(0, 3).map(
-              (
-                recipe,
-                index // Exibe as 3 primeiras receitas
-              ) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => handleRecipePress(recipe)}
-                >
-                  <View style={styles.featuredCard}>
-                    <Image
-                      source={{ uri: recipe.images[0] }} // Usando a primeira imagem da receita
-                      style={styles.featuredImage}
-                    />
-                    <Text style={styles.featuredTitle}>{recipe.title}</Text>
-                    <Text style={styles.featuredDescription}>
-                      {recipe.ingredients.join(', ').slice(0, 100)}...
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              )
-            )
-          ) : (
-            <Text>Carregando receitas...</Text> // Exibe mensagem enquanto não há receitas
-          )}
-        </ScrollView>
-      </View>
-
-      {/* Seção de Receitas Populares da Semana (Todas as Receitas) */}
-      <View style={styles.popularContainer}>
-        <Text style={styles.sectionTitle}>Todas as Receitas</Text>
-        {recipes.length > 0 ? (
-          recipes.slice(3).map(
-            (
-              recipe,
-              index // Exibe as receitas restantes
-            ) => (
+            recipes.slice(0, 3).map((recipe, index) => (
               <TouchableOpacity
                 key={index}
                 onPress={() => handleRecipePress(recipe)}
               >
-                <View style={styles.popularCard}>
+                <View style={styles.featuredCard}>
                   <Image
                     source={{ uri: recipe.images[0] }}
-                    style={styles.popularImage}
+                    style={styles.featuredImage}
                   />
-                  <View style={styles.popularContent}>
-                    <Text style={styles.popularTitle}>{recipe.title}</Text>
-                    <Text style={styles.popularDescription}>
-                      {recipe.ingredients.join(', ').slice(0, 100)}...
-                    </Text>
-                  </View>
+                  <Text style={styles.featuredTitle}>{recipe.title}</Text>
+                  <Text style={styles.featuredDescription}>
+                    {recipe.ingredients.join(', ').slice(0, 100)}...
+                  </Text>
                 </View>
               </TouchableOpacity>
-            )
-          )
+            ))
+          ) : (
+            <Text>Carregando receitas...</Text>
+          )}
+        </ScrollView>
+      </View>
+
+      <View style={styles.popularContainer}>
+        <Text style={styles.sectionTitle}>Todas as Receitas</Text>
+        {recipes.length > 0 ? (
+          recipes.slice(3).map((recipe, index) => (
+            <TouchableOpacity
+              key={index}
+              onPress={() => handleRecipePress(recipe)}
+            >
+              <View style={styles.popularCard}>
+                <Image
+                  source={{ uri: recipe.images[0] }}
+                  style={styles.popularImage}
+                />
+                <View style={styles.popularContent}>
+                  <Text style={styles.popularTitle}>{recipe.title}</Text>
+                  <Text style={styles.popularDescription}>
+                    {recipe.ingredients.join(', ').slice(0, 100)}...
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))
         ) : (
-          <Text>Carregando...</Text> // Exibe mensagem enquanto não há receitas
+          <Text>Carregando...</Text>
         )}
       </View>
 
-      {/* Modal para exibir a receita completa */}
       <Modal
         visible={modalVisible}
         animationType="slide"
         transparent={true}
-        onRequestClose={closeModal} // Fecha o modal ao pressionar o botão de voltar
+        onRequestClose={closeModal}
       >
         <View style={styles.modalContainer}>
           {selectedRecipe && (

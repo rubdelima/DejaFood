@@ -2,132 +2,151 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  FlatList, // Pode usar FlatList ou .map se forem sempre poucos itens
+  FlatList,
   TouchableOpacity,
   Image,
   StyleSheet,
-  ScrollView, // Adicionado para caso o conteúdo exceda a tela
+  ScrollView,
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native'; // Para o botão voltar
-import { Recipe } from '.'; // Importe sua interface Recipe (ajuste o caminho se necessário)
+import { ArrowLeft, Home } from 'lucide-react-native';
+import { Recipe } from '.';
 
 export default function RecipeListScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-
   const [recipes, setRecipes] = useState<Recipe[]>([]);
 
-  // Efeito para carregar e parsear as receitas recebidas via parâmetro
   useEffect(() => {
     const recipesParam = params.recipesListStringfied;
-    console.log("RecipeListScreen: Recebido param 'recipesListStringfied':", recipesParam);
+    console.log(
+      "RecipeListScreen: Recebido param 'recipesListStringfied':",
+      recipesParam
+    );
 
     if (recipesParam && typeof recipesParam === 'string') {
       try {
         const parsedRecipes = JSON.parse(recipesParam);
-        if (Array.isArray(parsedRecipes)) {
-          setRecipes(parsedRecipes);
-        } else {
-          console.error("RecipeListScreen: Parâmetro não é um array JSON válido.");
-          setRecipes([]);
-        }
+        setRecipes(Array.isArray(parsedRecipes) ? parsedRecipes : []);
       } catch (e) {
-        console.error("RecipeListScreen: Erro ao parsear receitas:", e);
+        console.error('RecipeListScreen: Erro ao parsear receitas:', e);
         setRecipes([]);
       }
     } else {
-       console.warn("RecipeListScreen: Lista de receitas não fornecida ou inválida.");
-       setRecipes([]); // Define como vazio se não receber parâmetro
+      console.warn(
+        'RecipeListScreen: Lista de receitas não fornecida ou inválida.'
+      );
+      setRecipes([]);
     }
   }, [params.recipesListStringfied]);
 
-  // Função chamada ao selecionar uma receita da lista
   const handleRecipeSelect = (selectedRecipe: Recipe) => {
-    console.log("Receita selecionada:", selectedRecipe.title);
-    // Navega para a tela de detalhes, passando a receita selecionada
+    console.log('Receita selecionada:', selectedRecipe.title);
     router.push({
-      pathname: '/recipe-details', // Rota para a tela de detalhes
+      pathname: '/recipe-details',
       params: {
-        recipeStringfied: JSON.stringify(selectedRecipe) // Passa a receita clicada
-      }
+        recipeStringfied: JSON.stringify(selectedRecipe),
+      },
     });
   };
 
-  // Função para renderizar cada item da lista de receitas (usando .map abaixo)
   const renderRecipeOption = (recipe: Recipe, index: number) => {
-     // Pega a primeira imagem ou um placeholder
-     const imageUrl = recipe.images?.[0];
+    const imageUrl = recipe.images?.[0];
 
-     return (
-        <TouchableOpacity
-            key={recipe.url || recipe.title || index} // Usa URL, título ou índice como chave
-            style={styles.recipeItem}
-            onPress={() => handleRecipeSelect(recipe)}
-            activeOpacity={0.7}
-        >
-            {imageUrl && (
-                <Image source={{ uri: imageUrl }} style={styles.recipeImage} resizeMode="cover" />
-            )}
-            {/* View para o título caso a imagem falhe ou como overlay */}
-            <View style={styles.titleContainer}>
-               <Text style={styles.recipeTitle} numberOfLines={2}>{recipe.title || "Receita Sem Título"}</Text>
-            </View>
-        </TouchableOpacity>
-     );
+    return (
+      <TouchableOpacity
+        key={recipe.url || recipe.title || index}
+        style={styles.recipeItem}
+        onPress={() => handleRecipeSelect(recipe)}
+        activeOpacity={0.7}
+      >
+        {imageUrl && (
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.recipeImage}
+            resizeMode="cover"
+          />
+        )}
+        <View style={styles.titleContainer}>
+          <Text style={styles.recipeTitle} numberOfLines={2}>
+            {recipe.title || 'Receita Sem Título'}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
   };
 
-
   return (
-    <ScrollView style={styles.container}>
-      {/* Header com botão voltar */}
+    <View style={styles.container}>
       <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ArrowLeft size={28} color="#FF6B6B" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Receitas Encontradas</Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
+          <ArrowLeft size={28} color="#FF6B6B" />
+        </TouchableOpacity>
+
+        <Text style={styles.headerTitle}>Receitas Encontradas</Text>
+
+        <TouchableOpacity
+          onPress={() => router.replace('/')}
+          style={styles.homeButton}
+        >
+          <Home size={24} color="#FF6B6B" />
+        </TouchableOpacity>
       </View>
 
-      {/* Título Principal */}
-      <Text style={styles.mainTitle}>Escolha uma opção:</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.mainTitle}>Escolha uma opção:</Text>
 
-      {/* Lista de Opções de Receita */}
-      {recipes.length > 0 ? (
-        // Mapeia as 3 primeiras receitas (ou menos, se houver menos)
-        <View style={styles.listContainer}>
+        {recipes.length > 0 ? (
+          <View style={styles.listContainer}>
             {recipes.slice(0, 3).map(renderRecipeOption)}
-        </View>
-      ) : (
-        // Mensagem se nenhuma receita foi recebida/parseada
-        <Text style={styles.emptyText}>Nenhuma receita encontrada para exibir.</Text>
-      )}
-    </ScrollView>
+          </View>
+        ) : (
+          <Text style={styles.emptyText}>
+            Nenhuma receita encontrada para exibir.
+          </Text>
+        )}
+      </ScrollView>
+    </View>
   );
 }
 
-// --- Estilos ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f7f7', // Fundo similar ao anterior
+    backgroundColor: '#f7f7f7',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 50 : 30, // Espaço seguro
-    paddingHorizontal: 15, // Padding horizontal do header
-    marginBottom: 10,
+    justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'ios' ? 50 : 30,
+    paddingHorizontal: 15,
+    paddingBottom: 10,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
   backButton: {
-     padding: 8,
-     marginRight: 10,
+    padding: 8,
+  },
+  homeButton: {
+    padding: 8,
   },
   headerTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: '#333',
-      fontFamily: 'Inter_600SemiBold', // Exemplo
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    fontFamily: 'Inter_600SemiBold',
+    flex: 1,
+    textAlign: 'center',
   },
   mainTitle: {
     fontSize: 22,
@@ -137,18 +156,17 @@ const styles = StyleSheet.create({
     marginTop: 15,
     marginBottom: 25,
     paddingHorizontal: 20,
-    fontFamily: 'Inter_700Bold', // Exemplo
+    fontFamily: 'Inter_700Bold',
   },
   listContainer: {
-     paddingHorizontal: 20, // Padding para os itens da lista
+    paddingHorizontal: 20,
   },
   recipeItem: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    marginBottom: 20, // Espaço entre os itens
-    overflow: 'hidden', // Garante que a imagem não vaze das bordas
-    // Sombra
-    shadowColor: "#000",
+    marginBottom: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3.84,
@@ -156,23 +174,22 @@ const styles = StyleSheet.create({
   },
   recipeImage: {
     width: '100%',
-    height: 150, // Altura da imagem da receita na lista
-    backgroundColor: '#e0e0e0', // Fundo enquanto carrega
+    height: 150,
+    backgroundColor: '#e0e0e0',
   },
   titleContainer: {
-      padding: 15, // Espaçamento interno para o título
-      // Pode ser um overlay sobre a imagem com position: 'absolute' se preferir
+    padding: 15,
   },
   recipeTitle: {
     fontSize: 18,
-    fontWeight: '600', // Semi-bold
+    fontWeight: '600',
     color: '#333',
-    fontFamily: 'Inter_600SemiBold', // Exemplo
+    fontFamily: 'Inter_600SemiBold',
   },
   emptyText: {
-      fontSize: 16,
-      color: '#888',
-      textAlign: 'center',
-      marginTop: 50,
-  }
+    fontSize: 16,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 50,
+  },
 });
