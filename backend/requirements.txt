@@ -20,3 +20,4 @@ python-multipart
 langchain-google-genai
 langchain-openai
 pytube
+googletrans

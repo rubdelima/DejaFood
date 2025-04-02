@@ -4,8 +4,11 @@ from src.utils.ai.tools_model.model import ToolsModel
 from src.utils.ai.clarifai import get_ingredients_from_image
 from src.utils.file import save_temp_file, delete_temp_file
 from src.utils.ai.tools_model.schemas import RecieveResult
+from googletrans import Translator
+import traceback
 
 tools_model = ToolsModel(model_name="phi4-mini", model_type="ollama")
+translator = Translator()
 
 async def process_image(file: UploadFile) -> list[str]:
     """
@@ -17,10 +20,19 @@ async def process_image(file: UploadFile) -> list[str]:
     image_path = save_temp_file(file)
     try:
         ingredients = get_ingredients_from_image(image_path)
-        print("Extracted ingredients:", ingredients)
-        return ingredients
+        ingredients_pt = []
+        
+        for ingredient in ingredients:
+            ingredient_pt = (await translator.translate(ingredient, src='en', dest='pt')).text
+            ingredients_pt.append(ingredient_pt)
+        
+        print("Extracted ingredients:", ingredients_pt)
+        return ingredients_pt
+    
     except Exception as e:
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error processing the image: {str(e)}")
+
     finally:
         delete_temp_file(image_path)
 
